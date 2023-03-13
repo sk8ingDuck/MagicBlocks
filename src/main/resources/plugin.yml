@@ -1,0 +1,4 @@
+name: MagicBlocks
+version: '${project.version}'
+main: me.sk8ingduck.magicblocks.MagicBlocks
+authors: [ sk8ingDuck ]
