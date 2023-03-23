@@ -18,6 +18,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.ThreadLocalRandom;
 
 
 public class BlockPlaceListener implements Listener {
@@ -50,18 +51,21 @@ public class BlockPlaceListener implements Listener {
         PacketContainer blockBreak = protocolLibrary.createPacket(PacketType.Play.Server.BLOCK_BREAK_ANIMATION);
         BlockPosition blockPosition = new BlockPosition(block.getX(), block.getY(), block.getZ());
 
-        if (entityId > 100000)
-            entityId = 10000;
+        //let entityid be a random number, not so elegant but needed
+        entityId = ThreadLocalRandom.current().nextInt(1, 99999);
 
 
         new BukkitRunnable() {
             int state = 0;
-
+            int secondsElapsed = 0;
+            final int secondsToRun = config.getDestroyDelay();
             @Override
             public void run() {
+                // Aggiorna lo stato del blocco
                 blockBreak.getBlockPositionModifier().write(0, blockPosition);
                 blockBreak.getIntegers().write(0, entityId).write(1, state);
 
+                // Invia il pacchetto ai giocatori online
                 Bukkit.getOnlinePlayers().forEach(player -> {
                     try {
                         ProtocolLibrary.getProtocolManager().sendServerPacket(player, blockBreak);
@@ -70,13 +74,18 @@ public class BlockPlaceListener implements Listener {
                     }
                 });
 
-                if (state == 10) {
+                // Controlla se il tempo è scaduto
+                if (++secondsElapsed >= secondsToRun) {
                     block.setType(Material.AIR);
                     this.cancel();
+                    return;
                 }
 
-                state++;
+                // Aggiorna lo stato proporzionale ai secondi passati
+                double progress = (double)secondsElapsed / secondsToRun;
+                state = (int) Math.floor(progress * 10);
+
             }
-        }.runTaskTimer(MagicBlocks.getInstance(), 0, config.getDestroyDelay());
+        }.runTaskTimer(MagicBlocks.getInstance(), 0, 20L);
     }
 }
